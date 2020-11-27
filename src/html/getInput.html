@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="bootstrap.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script>
+	<script src="checkrecursive.js"></script>
+	<script src="bracketCheck_test.js"></script>
+	<style type="text/css">
+		body{
+			font-size: 30px;
+		}
+	</style>
+</head>
+<body>
+ <!-- //*****************************************************************************// -->
+<ul class="nav nav-pills flex-column">
+  <li class="nav-item">
+    <a class="nav-link active" style="font-size: 55px">Computation DAG Generator</a>
+  </li>
+</ul>
+
+<!-- //*****************************************************************************// -->
+<div class="card text-white bg-secondary mb-3" >
+  <div class="card-header">Please enter your algorithm below</div>
+  <div class="card-body">
+    <form method="post">
+    <textarea name="box" rows="10" cols="50" id="user_input"></textarea><br>
+    Enter the variable value:<br>
+    <textarea name="box" rows="1" cols="50" id="n_value" placeholder="f(n)/f(n,k)"></textarea><br>
+    Enter array if available; <br>
+     <textarea name="box" rows="1" cols="50" id="array_value" placeholder="[x1,x2,x3,......]"></textarea>
+    </form>
+  <button type="submit" class="btn btn-primary" onclick="submit();" style="font-size: 30px">Input</button>
+  </div>
+</div>
+
+
+<!-- //************************************button set*****************************************// -->
+<div id="result" style="padding-left:0.55cm" hidden >
+  <p><span id='syntaxCheckDisplay'></span></p>  
+   <button type="submit" class="btn btn-primary" onclick="checkRecursive();" style="font-size: 30px">Check</button>   
+   <button type="submit" class="btn btn-primary" onclick="generate();" style="font-size: 30px" >Generate</button>
+   <button type="submit" class="btn btn-primary" onclick="location.reload();" style="font-size: 30px" >Clear</button>
+   <p><span style="padding-top:0.55cm" id='recursiveDisplay'></span></p>
+</div>
+  
+
+<div class="card text-white bg-secondary mb-3" >
+  <div class="card-header">COMPUTATION DAG</div>
+  <div class="card-body">
+    <svg width="2500" height="1500">    
+    <g>            
+    </g>   
+  </svg>	
+  </div>
+</div>
+
+<script type="text/javascript">
+function submit(){
+	document.getElementById("result").hidden = true;
+	getAlgo();
+}
+//user click generate button
+function generate(){ 
+//****************************************************************************************//  
+  var array = []; //store data couples as sub arrays. [[[5],[4]],[[4],[3]]]
+  var numberOfthreads = 5;
+  var a1 =eval(getArray());
+  eval(change());
+  var x = eval(getUser()) //get a array after executing the input algorithm  
+
+//****************************************************************************************//  
+
+//takes the first array got after executing the input algorithm
+  //identify all the children one has.(according to the number of recursive call.if 2, 2 children)
+var childparent = []; //array containning element and it's children
+
+for(var i=0; i<x.length ; i++){
+  x[i][0].parent = JSON.stringify(x[i][0]);
+  x[i][0].children = [];
+  x[i][0].children.push(JSON.stringify(x[i][1]));
+  for(var j=i+1 ; j<x.length ; j++){
+    if(JSON.stringify(x[i][0])== JSON.stringify(x[j][0])){
+      if(x[i][0].children.length< numberOfthreads){
+        if(x[i][0].children.includes(JSON.stringify(x[j][1]))==false){ // same children check ++++++ newly added
+         x[i][0].children.push(JSON.stringify(x[j][1]));
+        delete x[j];
+        x = modifyArray(x); 
+        }
+      }
+    }
+  }
+  childparent.push(x[i][0]);
+}
+
+//modify the array after slicing the selection. When selecting to childparent array, 
+                    //when one is got, remove it from the X array
+ function modifyArray(a){
+  var aa = [];
+  for(var i=0;i<a.length;i++){
+    if(a[i] != undefined){
+      aa.push(a[i]);
+    }
+  }
+  return aa;
+ }
+//****************************************************************************************//
+
+//From childparent array build a flat array which index relationship showcase the child parent relationship. couldnot do at first because sometime 2 same value nodes had to be identified uniquely
+var r = []; // [5, 4, 3, 3, 2, 2, 1, 2, 1, 1, 0, 1, 0, empty × 2, 1, 0] 5 children from 1, 2 index
+function build(){
+  
+  r.push(childparent[0].parent);
+  
+  start = 0; //starting index
+  
+  while(start<r.length){
+    var elementObjectID = getparentid(r[start]); 
+    if(elementObjectID != undefined){
+      if(childparent[elementObjectID].children.length>0){
+      childparent[elementObjectID].children.forEach(function(d,i){r[start*numberOfthreads+1+i]=d}) //number of children is needed
+      start=start+1;
+    }
+
+    }else{
+      start=start+1;
+    }
+  }
+  // console.log(childparent[elementObjectID].parent);
+  // console.log(elementObjectID);
+}
+
+build(); //calling the function
+ function getparentid(n){
+  for(var g=0 ; g<childparent.length ; g++){
+    if(childparent[g].parent == n){
+      return g;
+    }
+  }
+ }
+
+
+//****************************************************************************************//
+var newRecursive =[]
+function addunique(){
+  for(var y=0 ; y<r.length; y++){
+    if(r[y]!=undefined){
+      newRecursive.push(r[y]+y.toString());//to make every thing unique
+    }else{
+      newRecursive.push(undefined);
+    }
+  }
+}
+addunique();
+//****************************************************************************************//
+
+var data = []; //store node, parent object
+               //constructor to make a new node which has its name and parent node name
+function node(name,parent,){
+  this.name = name;
+  this.parent = parent;
+ 
+}
+//make a new node and adds it to the data function
+function newNode(name, parent){
+  var element = new node(name, parent);
+  data.push(element);
+} 
+//****************************************************************************************// 
+
+ function nodegenerate(newRecursive, numberOfthreads){ //flat array to node, parent
+    newNode(newRecursive[0],null);
+    var start = 0;
+    while(start<newRecursive.length){
+      
+      for(var i=0; i<numberOfthreads ; i++){
+          if(newRecursive[start*numberOfthreads+1+i] != undefined){
+            newNode(newRecursive[start*numberOfthreads+1+i], newRecursive[start]);
+          }
+      }
+      start = start+1;
+    }
+  }
+  nodegenerate(newRecursive, numberOfthreads);
+
+//****************************************************************************************//
+   // *********** Convert flat data into a nice tree *************** //
+
+  var dataMap = data.reduce(function(map, node) {
+  map[node.name] = node;
+  return map;
+}, {});
+
+// create the tree array
+var treeData = [];
+data.forEach(function(node) {
+  // add to parent
+  var parent = dataMap[node.parent];
+  if (parent) {
+    // create child array if it doesn't exist
+    (parent.children || (parent.children = []))
+      // add node to child array
+      .push(node);
+  } else {
+    // parent is null or missing
+    treeData.push(node);
+  }
+});
+
+
+var treeLayout = d3.tree()
+  .size([2000, 500]) //width, height
+
+var root = d3.hierarchy(treeData[0])
+treeLayout(root)
+//****************************************************************************//
+
+//building nodes
+var node_ = root.descendants();
+var link_ = root.links(); 
+
+parent_array=[];
+for(var i=0;i<link_.length;i++){
+  parent_array.push(link_[i].source.data.name)
+}
+//loop through parent_array. count how many children are there for a parent
+var array_index=0;
+var children = 1;
+var childCount=[]; //[["[6]0", 3], ["[3]2", 1],["[4]3", 2]]
+while(array_index<=parent_array.length){
+  var checkParent = parent_array[array_index];
+  for(var i=array_index+1;i<parent_array.length;i++){
+    if(checkParent==parent_array[i]){
+      children=children+1;
+      delete parent_array[i];
+    }
+  }
+  if(checkParent!=undefined){
+    childCount.push([checkParent,children])
+  }
+  children=1;
+  array_index=array_index+1;
+}
+
+
+var testArray = []      //a=[["nodename",[1,1,1]],["nodename",[1,1]]](nodeName, and a array which has a length equal to the child count)
+for(var i=0;i<link_.length;i++){
+  var source_children = getChildCount(link_[i].source.data.name);//child count for the sourec
+  littleArray=[];
+  for(var j=0;j<source_children;j++){
+    littleArray.push(1)
+  }
+  var cc=false; //remove duplicate in the test array
+  for(var t=0;t<testArray.length;t++){
+    if(testArray[t][0]==link_[i].source.data.name){
+      cc=true; //there is the data before, then cc is true,no need to push the data
+      break
+    }
+  }
+  if(cc==false){
+    testArray.push([link_[i].source.data.name,littleArray])
+  }
+}
+
+
+//link eke source eke nama dunnama ekak empty karanna epai.link ekakata adaalawa andala e childwa ain karnawa wage
+function emptyChild(sourcename){  
+  for(var i=0;i<testArray.length;i++){
+    if(testArray[i][0]==sourcename){
+      for(var j=0;j<testArray[i][1].length;j++){
+        if(testArray[i][1][j]!=undefined){
+          delete testArray[i][1][j];
+          break;
+        }
+      }
+    }
+  }
+}
+function howmanyempty(sourcename){
+  for(var i=0;i<testArray.length;i++){
+    if(testArray[i][0]==sourcename){
+      var empty=0;
+      for(var t=0;t<testArray[i][1].length;t++){
+        if(testArray[i][1][t]==undefined){
+          empty=empty+1;
+        }
+      }
+      return empty;
+    }
+  }
+}
+
+function getChildCount(nodename){ 
+  var name= nodename;
+  var numberOfChildren=0;;
+  for(var i=0;i<childCount.length;i++){
+    if(childCount[i][0]==name){
+      numberOfChildren=childCount[i][1];
+    }
+  }
+  return numberOfChildren;
+}
+//***************************************************************************//
+//wrap up the root with square
+      d3.select('svg g')
+        .append('rect')
+        .classed('node', true)
+        .attr("x", (node_[0].x-20))
+        .attr("y", (node_[0].y)*2+30)
+        .attr("width",45*(getChildCount(node_[0].data.name)+1))
+        .attr("height",50)
+        .style("stroke","black")
+        .style("fill","#BFBEBE");
+//*************************************************************************//
+//connecting nodes by links
+for(var i=0;i<link_.length;i++){
+  var adjust = howmanyempty(link_[i].source.data.name); //check how many links have been drawn
+    d3.select('svg g')
+    .append('line')
+    .classed('link', true)
+    .attr('x1', (link_[i].source.x)+(adjust*40))
+    .attr('y1', (link_[i].source.y*2+50))
+    .attr('x2', (link_[i].target.x))
+    .attr('y2', ((link_[i].target.y)*2+50))
+    .attr("stroke-width", 1)
+    .attr("stroke", "black")       
+    .attr("marker-end", "url(#triangle)");
+  if(adjust>=1){
+    d3.select('svg g')
+        .append('rect')
+        .classed('node', true)
+        .attr("x", (link_[i].target.x-20))
+        .attr("y", (link_[i].target.y)*2+30)
+        .attr("width",45*(getChildCount(link_[i].target.data.name)+1))
+        .attr("height",50)
+        .style("stroke","black")
+        .style("fill","#686461");
+  }else{
+    d3.select('svg g')
+        .append('rect')
+        .classed('node', true)
+        .attr("x", (link_[i].target.x-20))
+        .attr("y", (link_[i].target.y)*2+30)
+        .attr("width",45*(getChildCount(link_[i].target.data.name)+1))
+        .attr("height",50)
+        .style("stroke","black")
+        .style("fill","#BFBEBE");
+  }
+  emptyChild(link_[i].source.data.name);
+}
+//***********************************************************************//
+//building basic nodes in the graph
+for(var i=0;i<node_.length;i++){  //node to node loop
+  var node_child_count = getChildCount(node_[i].data.name) // current node,number of children
+  var start=40; //padding between two nodes
+  if(node_child_count>=0){ 
+    for(var j=0;j<node_child_count+1;j++){  //nodes according to children count 1->2,2->3 ,0->1 
+      if(j==0){
+        d3.select('svg g')
+        .append('circle')
+        .classed('node', true)
+        .attr('cx', (node_[i].x)+start*j)
+        .attr('cy', (node_[i].y)*2+50)
+        .attr('r', 10)
+        .style("stroke","black") 
+        .style("fill", "black"); //first set of nodes
+      }else if(j==node_child_count){
+        d3.select('svg g')
+        .append('circle')
+        .classed('node', true)
+        .attr('cx', (node_[i].x)+start*j)
+        .attr('cy', (node_[i].y)*2+50)
+        .attr('r', 10)
+        .style("stroke","black")
+        .style("fill", "white"); // last set of nodes    
+      }else{
+        d3.select('svg g')
+        .append('circle')
+        .classed('node', true)
+        .attr('cx', (node_[i].x)+start*j)
+        .attr('cy', (node_[i].y)*2+50)
+        .attr('r', 10)
+        .style("stroke","black")
+        .style("fill", "#9A938E");    //middle set of nodes  
+      }
+    }   
+  }
+}
+//**************************************************************//
+finalLinks();//
+
+// final links that connect from bottom to top
+function finalLinks(){
+  var l = root.links();
+  for(var i=0;i<l.length;i++){
+    if(checkLeaf(l[i].target.data.name)==true){//leaf node ekak nan
+      var child = getChildCount(l[i].source.data.name)
+      d3.select('svg g')
+        .append('line')
+        .classed('link', true)
+        .attr('x1', l[i].target.x)
+        .attr('y1', l[i].target.y*2+50)
+        .attr('x2', l[i].source.x+(40*child))
+        .attr('y2', l[i].source.y*2+50)
+        .attr("stroke-width", 1)
+        .attr("stroke", "black")       
+        .attr("marker-end", "url(#triangle)");               
+    }else{//leaf node newei nan
+      var child_s=getChildCount(l[i].source.data.name);
+      var child_t = getChildCount(l[i].target.data.name);
+      d3.select('svg g')
+        .append('line')
+        .classed('link', true)
+        .attr('x1', l[i].target.x+(40*child_t))
+        .attr('y1', l[i].target.y*2+50)
+        .attr('x2', l[i].source.x+(40*child_s))
+        .attr('y2', l[i].source.y*2+50)
+        .attr("stroke-width", 1)
+        .attr("stroke", "black")       
+        .attr("marker-end", "url(#triangle)"); 
+    }
+  }
+}
+threadConnect();//
+function threadConnect(){
+  for(var i=0;i<node_.length;i++){//node eken ekata yanawa
+    var temp_node=node_[i];//eka node ekak gatta
+    var temp_node_children = getChildCount(temp_node.data.name) //node ekata inna childrenla gana gtta
+    //3k innawanan aluth thread 2i, 2i nan aluth thread 1i,1i nan 0i
+    for(var j=0;j<temp_node_children-1;j++){ //eka establish wenna one thread ekak gana gannawa
+      d3.select('svg g')
+        .append('line')
+        .classed('link', true)
+        .attr('x1', temp_node.x+(j*35))
+        .attr('y1', temp_node.y*2+50)
+        .attr('x2', temp_node.x+(j*35)+35)
+        .attr('y2', temp_node.y*2+50)
+        .attr("stroke-width", 1)
+        .attr("stroke", "black")       
+        .attr("marker-end", "url(#triangle)");
+    }
+  }
+}
+//check whether the node is a leaf node
+function checkLeaf(name){
+  var leaf = root.leaves();
+  var availability = false ;          //leaf ekak newei kyala ganna wenawa
+  for(var i=0;i<leaf.length;i++){
+    if(leaf[i].data.name==name){
+      availability = true;  //leaf wala thibba kynne true kala break kala
+      break;
+    }
+  }
+  return availability;
+}
+
+//arrow
+d3.select('svg g')
+    .append("defs").append("marker")
+    .attr("id", "triangle")
+    .attr("refX", 10)
+    .attr("refY", 10)
+    .attr("markerWidth", 50)
+    .attr("markerHeight", 50)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M 0 0 12 5 0 15 3 6")
+    .style("fill", "blue");
+              
+
+//*******************************************************************************//
+//to get all the node names, from array 'r' have remove empty positions as root.descendants dont have any empty position
+var nodeNameContainer = [];
+for(var u=0 ; u<r.length ; u++){
+  r[u] != undefined ? nodeNameContainer.push(r[u]) : '';
+}
+
+//add node name
+d3.select('svg g')
+    .selectAll('option')//selecting all text elements
+    .data(root.descendants())
+    .enter()
+    .append("text")
+    .attr("dx", function(d){return d.x-75})
+    .attr("dy", function(d){return d.y*2+25})
+    .attr('font-size',25)
+    .text(function(d,i) {return "f"+nodeNameContainer[i]});
+
+
+}
+</script>
+
+</body>
+</html>
+
