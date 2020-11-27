@@ -4,4 +4,4 @@ Computation DAG generator is a tool to automate the process of computation direc
 
 ## Installation
 
-Download and run the getInput.html file
+Download and run thesrc/html/getInput.html file
