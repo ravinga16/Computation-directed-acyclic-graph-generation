@@ -8,6 +8,6 @@ Computation DAG generator is a tool to automate the process of computation direc
 - Automate the process for accept an algorithm, process it and design the computation DAG  
 - Understanding the allocation of the threads for each sub problem in the recursive algorithm is an objective
 
-##Installation
+## Installation
 
  Navigate to source code/FINAL and execute index.html
